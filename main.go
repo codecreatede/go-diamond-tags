@@ -138,7 +138,7 @@ func hspFunc(cmd *cobra.Command, args []string) {
 					intermediateCov = append(intermediateCov, calCov[i])
 					intermediateCovSum = sum(intermediateCov)
 					calIDcov = append(calIDcov, calID[i])
-					calCov = append(calCov, intermediateCovSum/length[i])
+					calCov = append(calCov, intermediateCovSum/length[j])
 				}
 			}
 		}
