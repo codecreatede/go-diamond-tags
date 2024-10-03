@@ -55,7 +55,6 @@ func hspFunc(cmd *cobra.Command, args []string) {
 	refIdenEnd := []int{}
 	alignIdenStart := []int{}
 	alignIdenEnd := []int{}
-	// calDiff := []int32{}
 	// map as a set for making the unique ids for the fasta for the calculation.
 	uniqueAlign := make(map[string]string)
 
@@ -109,4 +108,47 @@ func hspFunc(cmd *cobra.Command, args []string) {
 	for i := range sequences {
 		length = append(length, len(sequences[i]))
 	}
+
+
+	// golang has no sum function so integrating a sum function
+
+	func sum (arr *[]int) int {
+		count := 0
+		for i := range arr {
+			count += arr[i]
+		}
+		return count
+	}
+
+	// estimate coverage and generate tags for genome annotation.
+  calID := []string{}
+	calDiff := []int{}
+	for i := range refID {
+		calID = append(calID, refID[i])
+		calDiff = append(calDiff, refIdenEnd[i]-refIdenStart[i])
+	}
+	calIDcov := []string{}
+	calCov := []int{}
+	for i := range calID {
+		for j := range length {
+			for k,_ := range uniqueAlign {
+				if uniqueAlign[k] == calID[i] {
+					intermediateCov := []int{}
+					intermediateCov = append(intermediateCov, calCov[i])
+          calIDcov = append(calIDcov, calID[i])
+					calCov = append(sum(intermediateCov)/length[i])
+				}
+			}
+		}
+	}
+	// writing the coverage to the file
+	file, err := os.Create("coverage estimation")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	for i := range(calIDcov) {
+		_,err := file.WriteString(calIDcov[i], "\t", calCov[i])
+	}
+
 }
