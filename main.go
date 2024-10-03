@@ -48,6 +48,14 @@ func init() {
 	rootCmd.Flags().StringVarP(&pacbioreads, "pacbioreads", "p", "pacbio reads file", "pacbio file")
 }
 
+func sum(arr []int) int {
+	count := 0
+	for i := range arr {
+		count += arr[i]
+	}
+	return count
+}
+
 func hspFunc(cmd *cobra.Command, args []string) {
 	refID := []string{}
 	alignID := []string{}
@@ -55,19 +63,21 @@ func hspFunc(cmd *cobra.Command, args []string) {
 	refIdenEnd := []int{}
 	alignIdenStart := []int{}
 	alignIdenEnd := []int{}
-	// map as a set for making the unique ids for the fasta for the calculation.
 	uniqueAlign := make(map[string]string)
 
 	fOpen, err := os.Open(alignmentfile)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	fRead := bufio.NewScanner(fOpen)
+
 	for fRead.Scan() {
 		line := fRead.Text()
 		refID = append(refID, strings.Split(string(line), "\t")[0])
 		alignID = append(alignID, strings.Split(string(line), "\t")[1])
 	}
+
 	for fRead.Scan() {
 		line := fRead.Text()
 		start1, _ := strconv.Atoi(strings.Split(string(line), "\t")[6])
@@ -79,9 +89,7 @@ func hspFunc(cmd *cobra.Command, args []string) {
 		alignIdenStart = append(alignIdenStart, start2)
 		alignIdenEnd = append(alignIdenEnd, end2)
 	}
-	// storing the unique AlignIDs as a map and then using the same for the calculation.
-	// Not interested in the e-value, so the only role of the map is to make the unique set of
-	// the reference alignment.
+
 	for fRead.Scan() {
 		line := fRead.Text()
 		uniqueAlign[strings.Split(string(line), "\t")[0]] = strings.Split(string(line), "\t")[10]
@@ -91,10 +99,12 @@ func hspFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	readbuffer := bufio.NewScanner(readOpen)
 	header := []string{}
 	sequences := []string{}
 	length := []int{}
+
 	for readbuffer.Scan() {
 		line := readbuffer.Text()
 		if string(line[0]) == "A" || string(line[0]) == "T" || string(line[0]) == "G" ||
@@ -109,46 +119,38 @@ func hspFunc(cmd *cobra.Command, args []string) {
 		length = append(length, len(sequences[i]))
 	}
 
-
-	// golang has no sum function so integrating a sum function
-
-	func sum (arr *[]int) int {
-		count := 0
-		for i := range arr {
-			count += arr[i]
-		}
-		return count
-	}
-
-	// estimate coverage and generate tags for genome annotation.
-  calID := []string{}
+	calID := []string{}
 	calDiff := []int{}
+
 	for i := range refID {
 		calID = append(calID, refID[i])
 		calDiff = append(calDiff, refIdenEnd[i]-refIdenStart[i])
 	}
+
 	calIDcov := []string{}
 	calCov := []int{}
+	intermediateCov := []int{}
+	var intermediateCovSum int
 	for i := range calID {
 		for j := range length {
-			for k,_ := range uniqueAlign {
+			for k := range uniqueAlign {
 				if uniqueAlign[k] == calID[i] {
-					intermediateCov := []int{}
 					intermediateCov = append(intermediateCov, calCov[i])
-          calIDcov = append(calIDcov, calID[i])
-					calCov = append(sum(intermediateCov)/length[i])
+					intermediateCovSum = sum(intermediateCov)
+					calIDcov = append(calIDcov, calID[i])
+					calCov = append(calCov, intermediateCovSum/length[i])
 				}
 			}
 		}
 	}
-	// writing the coverage to the file
+
 	file, err := os.Create("coverage estimation")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
-	for i := range(calIDcov) {
-		_,err := file.WriteString(calIDcov[i], "\t", calCov[i])
-	}
 
+	for i := range calIDcov {
+		_, err := file.WriteString("calIDcov[i], calCov[i]")
+	}
 }
