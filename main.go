@@ -37,15 +37,23 @@ var (
 )
 
 var rootCmd = &cobra.Command{
+	Use:  "analyze alignments",
+	Long: "Analyzer for the diamond aligner and pacbio reads for hints",
+}
+
+var alignmentCmd = &cobra.Command{
 	Use:  "alignment",
 	Long: "Analyzes the hsp from the diamond read to protein alignment",
 	Run:  hspFunc,
 }
 
 func init() {
-	rootCmd.Flags().
+	alignmentCmd.Flags().
 		StringVarP(&alignmentfile, "alignmentfile", "a", "alignment file to be analyzed", "alignment")
-	rootCmd.Flags().StringVarP(&pacbioreads, "pacbioreads", "p", "pacbio reads file", "pacbio file")
+	alignmentCmd.Flags().
+		StringVarP(&pacbioreads, "pacbioreads", "p", "pacbio reads file", "pacbio file")
+
+	rootCmd.AddCommand(alignmentCmd)
 }
 
 func sum(arr []int) int {
@@ -54,6 +62,33 @@ func sum(arr []int) int {
 		count += arr[i]
 	}
 	return count
+}
+
+func pacbio() []int {
+	readOpen, err := os.Open(pacbioreads)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	readbuffer := bufio.NewScanner(readOpen)
+	header := []string{}
+	sequences := []string{}
+	length := []int{}
+
+	for readbuffer.Scan() {
+		line := readbuffer.Text()
+		if string(line[0]) == "A" || string(line[0]) == "T" || string(line[0]) == "G" ||
+			string(line[0]) == "C" {
+			sequences = append(sequences, line)
+		}
+		if string(line[0]) == "@" {
+			header = append(header, line)
+		}
+	}
+	for i := range sequences {
+		length = append(length, len(sequences[i]))
+	}
+	return length
 }
 
 func hspFunc(cmd *cobra.Command, args []string) {
@@ -95,30 +130,6 @@ func hspFunc(cmd *cobra.Command, args []string) {
 		uniqueAlign[strings.Split(string(line), "\t")[0]] = strings.Split(string(line), "\t")[10]
 	}
 
-	readOpen, err := os.Open(pacbioreads)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	readbuffer := bufio.NewScanner(readOpen)
-	header := []string{}
-	sequences := []string{}
-	length := []int{}
-
-	for readbuffer.Scan() {
-		line := readbuffer.Text()
-		if string(line[0]) == "A" || string(line[0]) == "T" || string(line[0]) == "G" ||
-			string(line[0]) == "C" {
-			sequences = append(sequences, line)
-		}
-		if string(line[0]) == "@" {
-			header = append(header, line)
-		}
-	}
-	for i := range sequences {
-		length = append(length, len(sequences[i]))
-	}
-
 	calID := []string{}
 	calDiff := []int{}
 
@@ -130,6 +141,8 @@ func hspFunc(cmd *cobra.Command, args []string) {
 	calIDcov := []string{}
 	calCov := []int{}
 	intermediateCov := []int{}
+	// moved the pacbio function to outside and calling the varibale as shadowing.
+	length := pacbio()
 	var intermediateCovSum int
 	for i := range calID {
 		for j := range length {
@@ -144,13 +157,21 @@ func hspFunc(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	file, err := os.Create("coverage estimation")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+	/*
+	   file, err := os.Create("coverage estimation")
 
-	for i := range calIDcov {
-		_, err := file.WriteString("calIDcov[i], calCov[i]")
-	}
+	   	if err != nil {
+	   		log.Fatal(err)
+	   	}
+
+	   defer file.Close()
+	   /*
+
+	   	for i := range calIDcov {
+	   		_, err := file.WriteString(calIDcov[i))
+	   		if err != nil {
+	   			log.Fatal(err)
+	   		}
+	   	}
+	*/
 }
