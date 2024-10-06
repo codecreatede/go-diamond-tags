@@ -32,8 +32,8 @@ func main() {
 }
 
 var (
-	alignmentfile string
-	pacbioreads   string
+	alignmentfile  string
+	referencefasta string
 )
 
 var rootCmd = &cobra.Command{
@@ -51,7 +51,7 @@ func init() {
 	alignmentCmd.Flags().
 		StringVarP(&alignmentfile, "alignmentfile", "a", "alignment file to be analyzed", "alignment")
 	alignmentCmd.Flags().
-		StringVarP(&pacbioreads, "pacbioreads", "p", "pacbio reads file", "pacbio file")
+		StringVarP(&referencefasta, "referencefasta", "p", "pacbio reads file", "pacbio file")
 
 	rootCmd.AddCommand(alignmentCmd)
 }
@@ -65,7 +65,7 @@ func sum(arr []int) int {
 }
 
 func pacbio() []int {
-	readOpen, err := os.Open(pacbioreads)
+	readOpen, err := os.Open(referencefasta)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func pacbio() []int {
 			string(line[0]) == "C" {
 			sequences = append(sequences, line)
 		}
-		if string(line[0]) == "@" {
+		if string(line[0]) == ">" {
 			header = append(header, line)
 		}
 	}
@@ -99,7 +99,6 @@ func hspFunc(cmd *cobra.Command, args []string) {
 	alignIdenStart := []int{}
 	alignIdenEnd := []int{}
 	uniqueAlign := make(map[string]string)
-
 	fOpen, err := os.Open(alignmentfile)
 	if err != nil {
 		log.Fatal(err)
@@ -111,10 +110,6 @@ func hspFunc(cmd *cobra.Command, args []string) {
 		line := fRead.Text()
 		refID = append(refID, strings.Split(string(line), "\t")[0])
 		alignID = append(alignID, strings.Split(string(line), "\t")[1])
-	}
-
-	for fRead.Scan() {
-		line := fRead.Text()
 		start1, _ := strconv.Atoi(strings.Split(string(line), "\t")[6])
 		end1, _ := strconv.Atoi(strings.Split(string(line), "\t")[7])
 		start2, _ := strconv.Atoi(strings.Split(string(line), "\t")[8])
@@ -123,55 +118,50 @@ func hspFunc(cmd *cobra.Command, args []string) {
 		refIdenEnd = append(refIdenEnd, end1)
 		alignIdenStart = append(alignIdenStart, start2)
 		alignIdenEnd = append(alignIdenEnd, end2)
-	}
-
-	for fRead.Scan() {
-		line := fRead.Text()
 		uniqueAlign[strings.Split(string(line), "\t")[0]] = strings.Split(string(line), "\t")[10]
 	}
 
-	calID := []string{}
-	calDiff := []int{}
+	//last part left rest all bugs fixed.
+	/*
+		calID := []string{}
+		calDiff := []int{}
 
-	for i := range refID {
-		calID = append(calID, refID[i])
-		calDiff = append(calDiff, refIdenEnd[i]-refIdenStart[i])
-	}
+		for i := range refID {
+			calID = append(calID, refID[i])
+			calDiff = append(calDiff, refIdenEnd[i]-refIdenStart[i])
+		}
 
-	calIDcov := []string{}
-	calCov := []int{}
-	intermediateCov := []int{}
-	// moved the pacbio function to outside and calling the varibale as shadowing.
-	length := pacbio()
-	var intermediateCovSum int
-	for i := range calID {
-		for j := range length {
-			for k := range uniqueAlign {
-				if uniqueAlign[k] == calID[i] {
-					intermediateCov = append(intermediateCov, calCov[i])
-					intermediateCovSum = sum(intermediateCov)
-					calIDcov = append(calIDcov, calID[i])
-					calCov = append(calCov, intermediateCovSum/length[j])
+		calIDcov := []string{}
+		calCov := []int{}
+		intermediateCov := []int	// moved the pacbio function to outside and calling the varibale as shadowing.
+		length := pacbio()
+		var intermediateCovSum int
+		for i := range calID {
+			for j := range length {
+				for k := range uniqueAlign {
+					if uniqueAlign[k] == calID[i] {
+						intermediateCov = append(intermediateCov, calCov[i])
+						intermediateCovSum = sum(intermediateCov)
+						calIDcov = append(calIDcov, calID[i])
+						calCov = append(calCov, intermediateCovSum/length[j])
+					}
 				}
 			}
 		}
-	}
+		   file, err := os.Create("coverage estimation")
 
-	/*
-	   file, err := os.Create("coverage estimation")
+		   	if err != nil {
+		   		log.Fatal(err)
+		   	}
 
-	   	if err != nil {
-	   		log.Fatal(err)
-	   	}
+		   defer file.Close()
+		   /*
 
-	   defer file.Close()
-	   /*
-
-	   	for i := range calIDcov {
-	   		_, err := file.WriteString(calIDcov[i))
-	   		if err != nil {
-	   			log.Fatal(err)
-	   		}
-	   	}
+		   	for i := range calIDcov {
+		   		_, err := file.WriteString(calIDcov[i))
+		   		if err != nil {
+		   			log.Fatal(err)
+		   		}
+		   	}
 	*/
 }
