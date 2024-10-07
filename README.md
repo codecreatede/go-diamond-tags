@@ -6,6 +6,13 @@
 - when you have a metagenome and you want to generate the annotation tags using the bacterial genome proteins.
 - when you have MAGS and you want to generate the specific mags to protein alignment.  
 - same goes for other species also. 
+- your pacbio reads should be a linear fasta, which is the way the pacbio reads usually comes.
+- Incase of the other fasta sequences such as genomes or others, remember to run the awk utility to linearize it. This is faster than implementing a loop iteration. 
+
+```
+awk '/^>/ {printf("\n%s\n",$0);next; } { printf("%s",$0);}  \
+                         END {printf("\n");}' inputfasta > output.fasta
+```
 
 ```
 gauavsablok@gauravsablok ~/Desktop/codecreatede/golang/go-diamond-tags ±main⚡ » \
@@ -48,7 +55,6 @@ cat coveragestimation.txt
 >chr10:66478458-66505490        0.9026005252839123
 >chr11:66478458-66505490        0.8952021603225687
 >chr11:66478458-66505490        1.0875596493175008
-
 
 ```
 Gaurav Sablok
