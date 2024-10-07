@@ -7,15 +7,14 @@ Universitat Potsdam
 Date 2024-10-3
 
 A diamond reads to protein aligner analyzer, which will take the read to protein alignments
-and will extract the corresponding hsps from the sequences. This can be used to extract all the
-aligned hsps or you can use to generate the coverage profile to see how much portion of each hsp
-is covered and implemented.
-
+and will estimate the coverage of the alignment with respect to the hsp aligned and then if you
+want you can extract the regions using the gomapper dimaond
 
 */
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -56,15 +55,15 @@ func init() {
 	rootCmd.AddCommand(alignmentCmd)
 }
 
-func sum(arr []int) int {
-	count := 0
+func sum(arr []float64) float64 {
+	counter := float64(0)
 	for i := range arr {
-		count += arr[i]
+		counter += arr[i]
 	}
-	return count
+	return counter
 }
 
-func pacbio() []int {
+func pacbio() ([]string, []string, []float64) {
 	readOpen, err := os.Open(referencefasta)
 	if err != nil {
 		log.Fatal(err)
@@ -73,7 +72,7 @@ func pacbio() []int {
 	readbuffer := bufio.NewScanner(readOpen)
 	header := []string{}
 	sequences := []string{}
-	length := []int{}
+	length := []float64{}
 
 	for readbuffer.Scan() {
 		line := readbuffer.Text()
@@ -86,19 +85,19 @@ func pacbio() []int {
 		}
 	}
 	for i := range sequences {
-		length = append(length, len(sequences[i]))
+		length = append(length, float64(len(sequences[i])))
 	}
-	return length
+	return header, sequences, length
+
 }
 
 func hspFunc(cmd *cobra.Command, args []string) {
 	refID := []string{}
 	alignID := []string{}
-	refIdenStart := []int{}
-	refIdenEnd := []int{}
-	alignIdenStart := []int{}
-	alignIdenEnd := []int{}
-	uniqueAlign := make(map[string]string)
+	refIdenStart := []float64{}
+	refIdenEnd := []float64{}
+	alignIdenStart := []float64{}
+	alignIdenEnd := []float64{}
 	fOpen, err := os.Open(alignmentfile)
 	if err != nil {
 		log.Fatal(err)
@@ -110,58 +109,48 @@ func hspFunc(cmd *cobra.Command, args []string) {
 		line := fRead.Text()
 		refID = append(refID, strings.Split(string(line), "\t")[0])
 		alignID = append(alignID, strings.Split(string(line), "\t")[1])
-		start1, _ := strconv.Atoi(strings.Split(string(line), "\t")[6])
-		end1, _ := strconv.Atoi(strings.Split(string(line), "\t")[7])
-		start2, _ := strconv.Atoi(strings.Split(string(line), "\t")[8])
-		end2, _ := strconv.Atoi(strings.Split(string(line), "\t")[9])
+		start1, _ := strconv.ParseFloat(strings.Split(string(line), "\t")[6], 32)
+		end1, _ := strconv.ParseFloat(strings.Split(string(line), "\t")[7], 32)
+		start2, _ := strconv.ParseFloat(strings.Split(string(line), "\t")[8], 32)
+		end2, _ := strconv.ParseFloat(strings.Split(string(line), "\t")[9], 32)
 		refIdenStart = append(refIdenStart, start1)
 		refIdenEnd = append(refIdenEnd, end1)
 		alignIdenStart = append(alignIdenStart, start2)
 		alignIdenEnd = append(alignIdenEnd, end2)
-		uniqueAlign[strings.Split(string(line), "\t")[0]] = strings.Split(string(line), "\t")[10]
+	}
+	id, _, length := pacbio()
+
+	type cov struct {
+		id  string
+		cov float64
 	}
 
-	//last part left rest all bugs fixed.
-	/*
-		calID := []string{}
-		calDiff := []int{}
-
-		for i := range refID {
-			calID = append(calID, refID[i])
-			calDiff = append(calDiff, refIdenEnd[i]-refIdenStart[i])
-		}
-
-		calIDcov := []string{}
-		calCov := []int{}
-		intermediateCov := []int	// moved the pacbio function to outside and calling the varibale as shadowing.
-		length := pacbio()
-		var intermediateCovSum int
-		for i := range calID {
-			for j := range length {
-				for k := range uniqueAlign {
-					if uniqueAlign[k] == calID[i] {
-						intermediateCov = append(intermediateCov, calCov[i])
-						intermediateCovSum = sum(intermediateCov)
-						calIDcov = append(calIDcov, calID[i])
-						calCov = append(calCov, intermediateCovSum/length[j])
-					}
-				}
+	coverageSeq := []cov{}
+	for i := range id {
+		for j := range refID {
+			if id[i] == refID[j] {
+				coverageSeq = append(coverageSeq, cov{
+					id:  refID[j],
+					cov: (refIdenEnd[j] - refIdenStart[j]) / length[i] * 100,
+				})
 			}
 		}
-		   file, err := os.Create("coverage estimation")
+	}
 
-		   	if err != nil {
-		   		log.Fatal(err)
-		   	}
+	for i := range coverageSeq {
+		fmt.Println(coverageSeq[i].id, coverageSeq[i].cov)
+	}
 
-		   defer file.Close()
-		   /*
-
-		   	for i := range calIDcov {
-		   		_, err := file.WriteString(calIDcov[i))
-		   		if err != nil {
-		   			log.Fatal(err)
-		   		}
-		   	}
-	*/
+	file, err := os.Create("coveragestimation.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	for i := range coverageSeq {
+		storeI := strconv.FormatFloat(coverageSeq[i].cov, 'f', -1, 64)
+		_, err := file.WriteString(coverageSeq[i].id + "\t" + storeI + "\n")
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }

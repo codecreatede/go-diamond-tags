@@ -1,6 +1,6 @@
 # go-diamond-tags
 
-- a subfunction for the diamond-aligner and extracting the hsp
+- a subfunction for the diamond-aligner and estimating the hsp coverage
 - this is also integratd into the go-mapper-diamond
 - you can use this as a separate if you have already aligned reads to the protein.
 - when you have a metagenome and you want to generate the annotation tags using the bacterial genome proteins.
@@ -35,6 +35,20 @@ Flags:
   -a, --alignmentfile string   alignment (default "alignment file to be analyzed")
   -h, --help                   help for alignment
   -p, --pacbioreads string     pacbio file (default "pacbio reads file")
+
+gauavsablok@gauravsablok ~/Desktop/codecreatede/golang/go-diamond-tags ±main⚡ » \
+go run main.go alignment -a matches.tsv -p ./samplefiles/pacbioreads.fasta
+>chr10:66478458-66505490 1.0061776347427218
+>chr10:66478458-66505490 0.9026005252839123
+>chr11:66478458-66505490 0.8952021603225687
+>chr11:66478458-66505490 1.0875596493175008
+gauavsablok@gauravsablok ~/Desktop/codecreatede/golang/go-diamond-tags ±main⚡ » \
+cat coveragestimation.txt
+>chr10:66478458-66505490        1.0061776347427218
+>chr10:66478458-66505490        0.9026005252839123
+>chr11:66478458-66505490        0.8952021603225687
+>chr11:66478458-66505490        1.0875596493175008
+
 
 ```
 Gaurav Sablok
