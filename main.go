@@ -81,7 +81,7 @@ func pacbio() ([]string, []string, []float64) {
 			sequences = append(sequences, line)
 		}
 		if string(line[0]) == ">" {
-			header = append(header, line)
+			header = append(header, strings.ReplaceAll(string(line), ">", ""))
 		}
 	}
 	for i := range sequences {
